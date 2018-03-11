@@ -7,6 +7,7 @@ Soft ver. 2.0
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
+#include <ESP8266mDNS.h>
 #include "LedTablePixels.h"
 #include "LedTableIrPanel.h"
 #include "Logger.h"
@@ -32,9 +33,6 @@ const byte clockPin = D1;
 
 //Pin connected to DS of 74HC595
 const byte dataPin = D0;
-
-//const char* ssid = "NETIASPOT-8440D0";
-//const char* password = "hkm2md7ykpdd";
 
 LedTablePixels pixels = LedTablePixels(pixelsNumb, pixelsPin, NEO_GRB + NEO_KHZ800);
 LedTableIrPanel ledTableIrPanel = LedTableIrPanel(latchPin, clockPin, dataPin, sensorsPin, 4);
@@ -80,18 +78,27 @@ void setup() {
 
   Serial.begin(115200);
   Serial.setDebugOutput(true);
-  logger.info("Connecting to %s ", ssid);
+  logger.printf("Connecting to %s ", ssid);
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
     toogleLed();
     delay(250);
     toogleLed();
-    logger.info(".");
+    logger.printf(".");
     delay(250);
   }
 
-  logger.info("connected\n");
+  logger.printf(" connected\n");
+
+  if (!MDNS.begin("xdtable")) {
+    logger.error("Error setting up MDNS responder!");
+  } else {
+    logger.info("mDNS responder started");
+  }
+  MDNS.addService("http", "tcp", 80);
+  MDNS.addService("table", "udp", 6454);
+
 
   if(Udp.begin(localUdpPort) == 1) {
     logger.info("Now listening at IP %s, UDP port %d\n",
