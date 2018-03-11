@@ -1,0 +1,3 @@
+[submodule "lib/ArduinoLogger"]
+	path = lib/ArduinoLogger
+	url = git@github.com:LazyHater/ArduinoLogger.git

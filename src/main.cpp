@@ -9,6 +9,8 @@ Soft ver. 2.0
 #include <WiFiUdp.h>
 #include "LedTablePixels.h"
 #include "LedTableIrPanel.h"
+#include "Logger.h"
+#include "config.h"
 
 //Analog pin connected to sensors
 const byte sensorsPin = A0;
@@ -31,26 +33,13 @@ const byte clockPin = D1;
 //Pin connected to DS of 74HC595
 const byte dataPin = D0;
 
-#define V_LEVEL 10 // Verbose level
-#define DEBUG 10
-#define INFO 20
-#define WARNING 30
-#define ERROR 40
-#define CRITICAL 50
-
-#define WROC_B
-
-#ifdef WROC_B
-const char* ssid = "NETIASPOT-B32900";
-const char* password = "7hkudpspjc89";
-#elif defined KAL
-const char* ssid = "MajkaCafe";
-const char* password = "izarobert";
-#endif
+//const char* ssid = "NETIASPOT-8440D0";
+//const char* password = "hkm2md7ykpdd";
 
 LedTablePixels pixels = LedTablePixels(pixelsNumb, pixelsPin, NEO_GRB + NEO_KHZ800);
 LedTableIrPanel ledTableIrPanel = LedTableIrPanel(latchPin, clockPin, dataPin, sensorsPin, 4);
 WiFiUDP Udp;
+Logger logger;
 
 const unsigned int localUdpPort = 6454;  // local port to listen on 6456 for artnet 6660 for ledTable
 uint8_t incomingPacket[400];  // buffer for incoming packet
@@ -91,81 +80,57 @@ void setup() {
 
   Serial.begin(115200);
   Serial.setDebugOutput(true);
-  #if V_LEVEL <= INFO
-  Serial.printf("Connecting to %s ", ssid);
-  #endif
+  logger.info("Connecting to %s ", ssid);
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
     toogleLed();
     delay(250);
     toogleLed();
-    #if V_LEVEL <= INFO
-    Serial.print(".");
-    #endif
+    logger.info(".");
     delay(250);
   }
 
-  #if V_LEVEL <= INFO
-  Serial.println("connected");
-  #endif
+  logger.info("connected\n");
 
   if(Udp.begin(localUdpPort) == 1) {
-
-    #if V_LEVEL <= INFO
-    Serial.printf("Now listening at IP %s, UDP port %d\n",
+    logger.info("Now listening at IP %s, UDP port %d\n",
                   WiFi.localIP().toString().c_str(), localUdpPort);
-    #endif
   }
   else {
-    #if V_LEVEL <= CRITICAL
-    Serial.println("Failed to open UDP port! Rebooting...");
-    #endif
+    logger.error("Failed to open UDP port! Rebooting...\n");
     ESP.restart();
   }
 }
 
 void handlePacket(uint8_t packet[], int len){
-  #if V_LEVEL <= DEBUG
-  Serial.printf("Got packet (0x%x) ", incomingPacket[0]);
-  #endif
+  logger.debug("Got packet (0x%x) ", incomingPacket[0]);
   switch (incomingPacket[0]) {
     case CALIBRATE: {
-      #if V_LEVEL <= INFO
-      Serial.println("Got CALIBRATE packet, calibrating...");
-      #endif
+      logger.info("Got CALIBRATE packet, calibrating...");
       ledTableIrPanel.createRefferenceTable();
     }
     break;
 
     case PING: {
-      #if V_LEVEL <= INFO
-      Serial.println("Got PING, sending back PONG.");
-      #endif
+       logger.info("Got PING, sending back PONG.\n");
 
       if(Udp.beginPacket(Udp.remoteIP(), Udp.remotePort()) != 1) {
-        #if V_LEVEL <= WARNING
-        Serial.printf("Failed to begin packet PONG to: %s on port %d\n",
+        logger.error("Failed to begin packet PONG to: %s on port %d\n",
         Udp.remoteIP().toString().c_str(), Udp.remotePort());
-        #endif
       }
 
       Udp.write(PONG);
 
       if(Udp.endPacket() != 1) {
-        #if V_LEVEL <= WARNING
-        Serial.printf("Failed to end packet PONG to: %s on port %d\n",
+        logger.error("Failed to end packet PONG to: %s on port %d\n",
         Udp.remoteIP().toString().c_str(), Udp.remotePort());
-        #endif
       }
     }
     break;
 
     case SET_MATRIX: {
-      #if V_LEVEL <= DEBUG
-      Serial.printf("Got SET_MATRIX of length %i and %i pixels\n", len, incomingPacket[1]);
-      #endif
-
+      logger.debug("Got SET_MATRIX of length %i and %i pixels\n", len, incomingPacket[1]);
       byte* tmp = &(incomingPacket[2]);
 
       for (int i = 0; i < incomingPacket[1]; i++)
@@ -176,43 +141,33 @@ void handlePacket(uint8_t packet[], int len){
     break;
 
     case GET_TOUCHSCREEN: {
-      #if V_LEVEL <= DEBUG
-      Serial.println("Got GET_TOUCHSCREEN collecting data...");
-      #endif
+      logger.debug("Got GET_TOUCHSCREEN collecting data...");
 
       ledTableIrPanel.collectData();
       ledTableIrPanel.convertReadingsToBoll();
 
       if(Udp.beginPacket(Udp.remoteIP(), Udp.remotePort()) != 1) {
-        #if V_LEVEL <= WARNING
-        Serial.printf("Failed to begin packet GET_TOUCHSCREEN to %s on port %d\n",
+          logger.error("Failed to begin packet GET_TOUCHSCREEN to %s on port %d\n",
           Udp.remoteIP().toString().c_str(), Udp.remotePort());
-        #endif
       }
 
       Udp.write((byte)TOUCHSCREEN);
       Udp.write(ledTableIrPanel.getRaw(), 100);
 
       if(Udp.endPacket() != 1) {
-        #if V_LEVEL <= WARNING
-        Serial.printf("Failed to end packet GET_TOUCHSCREEN to: %s on port %d\n",
+        logger.error("Failed to end packet GET_TOUCHSCREEN to: %s on port %d\n",
                       Udp.remoteIP().toString().c_str(), Udp.remotePort());
-        #endif
       }
     }
     break;
 
     case GET_TOUCHSCREEN_RAW: {
-      #if V_LEVEL <= DEBUG
-      Serial.println("Got GET_TOUCHSCREEN_RAW collecting data...");
-      #endif
+      logger.debug("Got GET_TOUCHSCREEN_RAW collecting data...\n");
       ledTableIrPanel.collectData();
 
       if(Udp.beginPacket(Udp.remoteIP(), Udp.remotePort()) != 1) {
-        #if V_LEVEL <= WARNING
-        Serial.printf("Failed to begin packet GET_TOUCHSCREEN_RAW to: %s on port %d\n",
+        logger.error("Failed to begin packet GET_TOUCHSCREEN_RAW to: %s on port %d\n",
         Udp.remoteIP().toString().c_str(), Udp.remotePort());
-        #endif
         return;
       }
 
@@ -220,28 +175,22 @@ void handlePacket(uint8_t packet[], int len){
       Udp.write(ledTableIrPanel.getRaw(), 100);
 
       if(Udp.endPacket() != 1) {
-        #if V_LEVEL <= WARNING
-        Serial.printf("Failed to end packet GET_TOUCHSCREEN_RAW to: %s on port %d\n",
+        logger.error("Failed to end packet GET_TOUCHSCREEN_RAW to: %s on port %d\n",
         Udp.remoteIP().toString().c_str(), Udp.remotePort());
-        #endif
         return;
       }
     }
     break;
 
     case GET_REFFERENCE_TABLE: {
-      #if V_LEVEL <= DEBUG
-      Serial.println("Got GET_REFFERENCE_TABLE");
-      #endif
+      logger.debug("Got GET_REFFERENCE_TABLE");
 
       uint8_t buff[100];
       ledTableIrPanel.getRefferenceTable(buff);
 
       if(Udp.beginPacket(Udp.remoteIP(), Udp.remotePort()) != 1) {
-        #if V_LEVEL <= WARNING
-        Serial.printf("Failed to begin packet GET_REFFERENCE_TABLE to: %s on port %d\n",
+        logger.error("Failed to begin packet GET_REFFERENCE_TABLE to: %s on port %d\n",
         Udp.remoteIP().toString().c_str(), Udp.remotePort());
-        #endif
         return;
       }
 
@@ -249,28 +198,22 @@ void handlePacket(uint8_t packet[], int len){
       Udp.write(buff, 100);
 
       if(Udp.endPacket() != 1) {
-        #if V_LEVEL <= WARNING
-        Serial.printf("Failed to end packet GET_REFFERENCE_TABLE to: %s on port %d\n",
+        logger.error("Failed to end packet GET_REFFERENCE_TABLE to: %s on port %d\n",
         Udp.remoteIP().toString().c_str(), Udp.remotePort());
-        #endif
         return;
       }
     }
     break;
 
     case RESET: {
-      #if V_LEVEL <= CRITICAL
-      Serial.println("Got RESET packet type, restarting...");
-      #endif
+      logger.info("Got RESET packet type, restarting...\n");
       ESP.restart();
     }
     break;
 
     ///TO DO: proper parsing and validation
     case ARTNET: {
-      #if V_LEVEL <= DEBUG
-      Serial.println("Got ARTNET");
-      #endif
+      logger.debug("Got ARTNET packet\n");
 
       byte upperHalf = incomingPacket[16];
       byte lowerHalf = incomingPacket[17];
@@ -284,9 +227,7 @@ void handlePacket(uint8_t packet[], int len){
     break;
 
     default:{
-      #if V_LEVEL <= WARNING
-      Serial.println("Unimplemented packet type.");
-      #endif
+      logger.error("Unimplemented packet type.\n");
     }
     break;
   }
@@ -295,9 +236,7 @@ void handlePacket(uint8_t packet[], int len){
 void loop() {
   long static lastPacketTime = 0;
   if ((connected) && (millis() - lastPacketTime > CONNECTION_TIMEOUT_TIME)) {
-    #if V_LEVEL <= INFO
-    Serial.println("Lost connection with server.");
-    #endif
+    logger.info("Lost connection with server.\n");
     connected = false;
     for (int i = 0; i < 100; i++)
     pixels.setPixelColor(i, 0);
@@ -314,9 +253,7 @@ void loop() {
 
   if (packetSize) {
     if (!connected) {
-      #if V_LEVEL <= INFO
-      Serial.println("Got connection with server.");
-      #endif
+      logger.info("Got connection with server.\n");
       digitalWrite(ledPin, HIGH); //disable LED
       connected = true;
     }
@@ -326,9 +263,7 @@ void loop() {
     Udp.flush();
 
     if(len == 0) {
-      #if V_LEVEL <= CRITICAL
-      Serial.println("Failed to read data from packet! Reseting...");
-      #endif
+      logger.error("Failed to read data from packet! Reseting...\n");
       ESP.restart();
     }
 
