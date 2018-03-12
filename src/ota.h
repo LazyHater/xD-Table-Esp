@@ -4,9 +4,7 @@
 #include <Arduino.h>
 #include <ArduinoOTA.h>
 #include "Logger.h"
-#include "config.h"
-
-extern Logger logger;
+#include "../lib/config/config.h"
 
 void setupOTA() {
   ArduinoOTA.setHostname(hostname);

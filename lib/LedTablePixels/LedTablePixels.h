@@ -1,3 +1,6 @@
+#ifndef LED_TABLE_PIXELS_H
+#define LED_TABLE_PIXELS_H
+
 #include <Adafruit_NeoPixel.h>
 #include <Arduino.h>
 
@@ -23,3 +26,5 @@ class LedTablePixels : public Adafruit_NeoPixel {
 
     static const byte gamma[];
 };
+
+#endif // LED_TABLE_PIXELS_H

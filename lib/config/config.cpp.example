@@ -1,0 +1,31 @@
+#include "config.h"
+
+const char* ssid = "****";
+const char* password = "****";
+
+
+const char* hostname = "xd-table";
+
+const int CONNECTION_TIMEOUT_TIME = 5000;
+
+const unsigned int localUdpPort = 6454;  // local port to listen on 6456 for artnet
+//Analog pin connected to sensors
+const byte sensorsPin = A0;
+
+//Pin connected to built in led
+const byte ledPin = D4;
+
+//Pin connected to DATA_IN of pixels
+const byte pixelsPin = D8;
+
+//Nmber of pixels
+const byte pixelsNumb = 100;
+
+//Pin connected to ST_CP of 74HC595
+const byte latchPin = D2;
+
+//Pin connected to SH_CP of 74HC595
+const byte clockPin = D1;
+
+//Pin connected to DS of 74HC595
+const byte dataPin = D0;

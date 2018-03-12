@@ -1,3 +1,6 @@
+#ifndef LED_TABLE_IR_PANNEL_H
+#define LED_TABLE_IR_PANNEL_H
+
 #include <Arduino.h>
 
 class LedTableIrPanel {
@@ -32,3 +35,5 @@ class LedTableIrPanel {
 
     void set(uint8_t p);
 };
+
+#endif // LED_TABLE_IR_PANNEL_H
