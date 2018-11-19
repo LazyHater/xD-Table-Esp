@@ -1,0 +1,26 @@
+#######################################
+# Syntax Coloring Map For Logger
+#######################################
+# Class
+#######################################
+
+Logger	KEYWORD1
+
+#######################################
+# Methods and Functions
+#######################################
+
+debug	KEYWORD2
+info			KEYWORD2
+error	KEYWORD2
+printf		KEYWORD2
+setLevel	KEYWORD2
+
+#######################################
+# Constants
+#######################################
+
+DEBUG		LITERAL1
+INFO		LITERAL1
+ERROR		LITERAL1
+NONE		LITERAL1
